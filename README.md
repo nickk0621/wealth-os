@@ -1,19 +1,19 @@
 # Wealth OS
 
-An agent-driven personal operating system for building wealth, protecting attention, evaluating commercial real estate, and running disciplined daily/weekly/monthly reviews.
+An agent-driven personal CEO operating system for building wealth through disciplined execution, opportunity creation, ownership, capital allocation, relationship building, and fast qualification of weak opportunities.
 
-## What it does now
+## The core loop
 
-Wealth OS uses a manager-style multi-agent pattern with the OpenAI Agents SDK:
+Wealth OS is designed to run a repeatable operating cadence rather than just display information:
 
-- **Chief of Staff** — orchestrates the system and turns analysis into a small number of concrete actions.
-- **Deal Agent** — evaluates real-estate and business opportunities, searches for kill criteria, and prevents sunk-cost thinking.
-- **CFO / Wealth Agent** — reasons in after-tax, after-fee, risk-adjusted terms and protects liquidity and solvency.
-- **Time & Habits Agent** — audits attention, deep work, routines, delegation, and calendar quality.
-- **Relationship Agent** — identifies relationships to deepen, maintain, or initiate.
-- **CEO Review Agent** — runs weekly, monthly, quarterly, and annual operating reviews.
+1. **Morning CEO Check-in** — lock exactly three commitments and answer the questions that drive opportunity creation, deal decisions, ownership-building, capital allocation, relationships, energy, and what to kill/delegate/avoid.
+2. **Execute** — work from those commitments instead of a generic to-do list.
+3. **Track** — mark commitments completed and record avoidance/scarcity patterns.
+4. **Score** — the CEO Scoreboard tracks leading wealth-building behaviors over time.
+5. **Review** — weekly/monthly/quarterly reviews use the actual history instead of relying on memory.
+6. **Adapt** — the Chief of Staff sees recent check-ins and uses them when coaching the next day.
 
-The Chief of Staff has persistent conversational memory through an SDK `SQLiteSession`. Separate structured operating state lives locally in `data/state.json`, with local history snapshots and saved markdown reports.
+The behavioral score is a leading indicator, not a prediction of wealth. Execution is weighted most heavily, followed by opportunity creation, ownership-building, decision velocity, leverage/delegation, relationships, and energy.
 
 ## One-command local setup
 
@@ -27,8 +27,6 @@ cd wealth-os
 bash scripts/setup.sh
 ```
 
-The setup script creates `.venv`, installs Wealth OS, creates a local `.env`, securely prompts for your OpenAI API key if needed, runs `wealth-os doctor`, and offers to launch the dashboard.
-
 ### Windows PowerShell
 
 ```powershell
@@ -37,59 +35,99 @@ cd wealth-os
 powershell -ExecutionPolicy Bypass -File .\scripts\setup.ps1
 ```
 
-After setup, the normal launch command is:
+If the repo is already installed:
 
 ```bash
+git pull
+source .venv/bin/activate
+pip install -e .
 wealth-os dashboard
 ```
 
-If you open a fresh terminal first activate the virtual environment:
-
-```bash
-source .venv/bin/activate
-```
-
-Windows PowerShell:
-
-```powershell
-.\.venv\Scripts\Activate.ps1
-```
-
-## Installation diagnostics
-
-Run:
+Run diagnostics with:
 
 ```bash
 wealth-os doctor
 ```
 
-It checks Python, the OpenAI key, outbound HTTPS connectivity, your local operating state, and optional Google Calendar credentials/authorization.
+## Daily use
 
-## Wealth Constitution
-
-`config/wealth_constitution.yaml` contains durable rules the agents should apply: preserve optionality, never risk ruin, measure after-tax outcomes, seek bad news early, build ownership, protect liquidity and attention, protect reputation, reject sunk-cost thinking, and avoid lifestyle-driven scarcity.
-
-## Dashboard
-
-Launch the local operating dashboard:
+The normal workflow is:
 
 ```bash
 wealth-os dashboard
 ```
 
-The dashboard includes daily check-ins, the personal wealth scoreboard, Chief-of-Staff chat, calendar intelligence, structured CRE underwriting/stress testing, deal analysis, relationship review, and a structured state editor.
+Then use **Today → Morning CEO Check-in**. Alternatively run the check-in from Terminal:
+
+```bash
+wealth-os ceo-checkin
+wealth-os morning
+```
+
+The dashboard now centers on:
+
+- Morning CEO Check-in
+- exactly three locked commitments
+- commitment completion
+- CEO behavior score and trend
+- avoidance/scarcity pattern log
+- Chief-of-Staff coaching using actual check-in history
+- weekly CEO reviews
+- Calendar Intelligence
+- commercial-real-estate underwriting and kill criteria
+- deal qualification
+- relationship deposits
+
+## Wealth Constitution
+
+`config/wealth_constitution.yaml` contains the durable rules the agents should apply: preserve optionality, never risk ruin, measure after-tax outcomes, seek bad news early, build ownership, protect liquidity and attention, protect reputation, reject sunk-cost thinking, and avoid lifestyle-driven scarcity.
+
+## Check-in data
+
+CEO check-ins are stored locally in:
+
+`data/wealth_os.db`
+
+That database is gitignored. The dashboard and Chief of Staff read the same record, so a saved check-in immediately changes the scoreboard and future agent context.
+
+## Remote sync API
+
+Wealth OS v0.4 includes a FastAPI data layer so an authenticated external process can eventually write the same CEO check-ins that the local dashboard reads.
+
+Run locally:
+
+```bash
+wealth-os api
+```
+
+It defaults to:
+
+`http://127.0.0.1:8765`
+
+Endpoints include:
+
+```text
+GET  /health
+GET  /api/dashboard
+GET  /api/checkins
+GET  /api/checkins/{YYYY-MM-DD}
+POST /api/checkins
+```
+
+For authentication set:
+
+```bash
+export WEALTH_OS_API_TOKEN="a-long-random-secret"
+```
+
+See `docs/CHECKIN_SYNC.md` for the request format and architecture.
+
+A local `127.0.0.1` API cannot receive writes directly from ChatGPT running on OpenAI's servers. To make the full **8 AM prompt → reply → automatic dashboard update** loop work, this API/data layer must later be placed behind an authenticated HTTPS endpoint (or another approved connected datastore). The application is already structured so that remote bridge does not require redesigning the check-in schema or coaching logic.
 
 ## Google Calendar — read only
 
-Calendar access is deliberately read-only.
-
-1. Enable Google Calendar API in a Google Cloud project.
-2. Configure Google Auth and create an OAuth 2.0 **Desktop app** client.
-3. Download the credentials JSON to:
-
-   `secrets/google_calendar_client_secret.json`
-
-4. Run:
+Calendar access is deliberately read-only. Once configured, morning plans and reviews can compare your stated priorities with actual time allocation.
 
 ```bash
 wealth-os calendar-auth
@@ -97,25 +135,11 @@ wealth-os calendar-status
 wealth-os calendar-audit
 ```
 
-The browser authorization flow stores the resulting local token at `secrets/google_calendar_token.json`. Both credential files are gitignored.
-
-Once connected, morning briefs and CEO reviews can compare your stated priorities with your actual calendar allocation.
+OAuth client secrets and tokens remain local and gitignored.
 
 ## Commercial real-estate underwriting
 
-The CRE module calculates deterministic metrics before the Deal Agent interprets them, including:
-
-- total basis and equity required
-- going-in cap rate
-- stabilized yield on cost
-- annual debt service
-- current and stabilized DSCR
-- cash flow after debt and cash-on-cash return
-- projected exit NOI/value
-- stress-case NOI decline, interest-rate shock, and exit-cap expansion
-- automatic coverage/spread kill flags
-
-CLI example:
+The CRE module calculates deterministic metrics before an agent interprets them, including total basis, equity requirement, cap rate, yield on cost, debt service, DSCR, cash-on-cash, exit value, stress cases, and automatic kill flags.
 
 ```bash
 wealth-os cre-underwrite \
@@ -129,17 +153,7 @@ wealth-os cre-underwrite \
   --exit-cap-rate 0.07
 ```
 
-Or use the **CRE Underwriting** page in the dashboard.
-
-## Daily commands
-
-```bash
-wealth-os check-in --sleep-hours 7.5 --deep-work-hours 2 --energy 8 --exercise --top-outcome "Underwrite target acquisition"
-wealth-os morning
-wealth-os chat
-```
-
-## CEO reviews
+## Reviews
 
 ```bash
 wealth-os review weekly
@@ -148,29 +162,10 @@ wealth-os review quarterly
 wealth-os review annual
 ```
 
-Reviews and morning briefs are saved locally under `data/reports/`.
-
-## Local but internet-connected
-
-The application runs on your computer, but the Python process can make outbound HTTPS calls to OpenAI and Google. The dashboard itself normally stays on `localhost`, so it does not need to be publicly exposed.
-
-See `docs/LOCAL_INTERNET.md` for a diagram and a fuller explanation.
+The reviews now use tracked CEO check-ins, not just free-form conversation history.
 
 ## Data and safety model
 
-Private operating state, session memory, histories, reports, OAuth tokens, API keys, and client secrets are gitignored.
+Private operating state, CEO check-ins, session memory, histories, reports, OAuth tokens, API keys, and client secrets are gitignored.
 
-Agents analyze and recommend, but Wealth OS does **not** move money, execute trades, sign documents, borrow funds, or send external messages automatically. Tax, legal, accounting, and investment conclusions should be treated as analysis for discussion with qualified professionals, not final professional advice.
-
-See `docs/OPERATING_RHYTHM.md` for the daily/weekly/monthly cadence and local scheduling example.
-
-## Next build targets
-
-1. Gmail integration with explicit human approval before any external send.
-2. Persistent typed CRE deal database with scenario/version history.
-3. Automated metrics and trend charts from state history.
-4. Richer calendar categorization and time-budget targets.
-5. Human-in-the-loop approval gates for any future external write action.
-6. Evals for Wealth Constitution compliance and deal qualification.
-
-Built on the OpenAI Agents SDK manager / agents-as-tools pattern.
+Agents analyze and recommend, but Wealth OS does **not** move money, execute trades, sign documents, borrow funds, or send external messages automatically. Tax, legal, accounting, and investment conclusions are analysis for discussion with qualified professionals, not final professional advice.
