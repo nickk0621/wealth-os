@@ -1,5 +1,7 @@
 import asyncio
 import json
+import os
+import socket
 import subprocess
 import sys
 from pathlib import Path
@@ -9,6 +11,7 @@ import typer
 from dotenv import load_dotenv
 from rich.console import Console
 from rich.markdown import Markdown
+from rich.table import Table
 
 from .calendar_google import authorize_calendar, calendar_digest, calendar_is_connected
 from .cre import CREDebt, CREDeal, kill_flags
@@ -18,10 +21,61 @@ from .state import DailyCheckIn, load_state, upsert_daily_checkin, write_report
 load_dotenv()
 app = typer.Typer(help="Wealth OS — agent-driven personal operating system")
 console = Console()
+ROOT = Path(__file__).resolve().parents[2]
 
 
 def render(prompt: str, session_id: str, include_calendar: bool = True) -> str:
     return asyncio.run(run_chief(prompt, session_id=session_id, include_calendar=include_calendar))
+
+
+def _internet_reachable(host: str = "api.openai.com", port: int = 443, timeout: float = 3.0) -> bool:
+    try:
+        with socket.create_connection((host, port), timeout=timeout):
+            return True
+    except OSError:
+        return False
+
+
+@app.command()
+def doctor():
+    """Check whether the local Wealth OS installation is ready to run."""
+    checks = []
+    py_ok = sys.version_info >= (3, 10)
+    checks.append(("Python 3.10+", py_ok, sys.version.split()[0]))
+
+    api_key = os.getenv("OPENAI_API_KEY", "").strip()
+    checks.append(("OPENAI_API_KEY", bool(api_key), "configured" if api_key else "missing"))
+
+    internet = _internet_reachable()
+    checks.append(("Outbound internet", internet, "api.openai.com:443 reachable" if internet else "not reachable"))
+
+    calendar_secret = ROOT / "secrets" / "google_calendar_client_secret.json"
+    checks.append(("Google Calendar OAuth client", calendar_secret.exists(), str(calendar_secret) if calendar_secret.exists() else "optional / missing"))
+    checks.append(("Google Calendar authorization", calendar_is_connected(), "connected" if calendar_is_connected() else "optional / not connected"))
+
+    try:
+        state = load_state()
+        state_ok = state is not None
+        state_detail = "state loads"
+    except Exception as exc:
+        state_ok = False
+        state_detail = str(exc)
+    checks.append(("Local operating state", state_ok, state_detail))
+
+    table = Table(title="Wealth OS doctor")
+    table.add_column("Check")
+    table.add_column("Status")
+    table.add_column("Detail")
+    for name, ok, detail in checks:
+        table.add_row(name, "[green]OK[/green]" if ok else "[yellow]ACTION[/yellow]", detail)
+    console.print(table)
+
+    required_ok = py_ok and bool(api_key) and internet and state_ok
+    if required_ok:
+        console.print("[green]Core Wealth OS is ready.[/green]")
+    else:
+        console.print("[yellow]Fix the ACTION items above before using the AI features.[/yellow]")
+        raise typer.Exit(code=1)
 
 
 @app.command()
@@ -95,7 +149,6 @@ def calendar_audit(days_back: int = 7, days_forward: int = 2):
         "Categorize the time into high-leverage creation/ownership work, sales/deal sourcing, relationships, operations/admin, "
         "and low-value/reactive work. Compare the pattern with my goals. Give me three calendar changes for next week."
     )
-    # The runtime uses a standard 7-back/2-forward digest; add a custom digest for this command.
     custom = calendar_digest(days_back=days_back, days_forward=days_forward)
     output = render(custom + "\n\n" + prompt, "calendar-audit", include_calendar=False)
     console.print(Markdown(output))
