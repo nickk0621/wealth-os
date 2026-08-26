@@ -2,102 +2,100 @@ from __future__ import annotations
 
 import asyncio
 import json
-from datetime import date
 
 import streamlit as st
 
 from .calendar_google import calendar_digest, calendar_is_connected, list_events
+from .checkin_ui import render_ceo_scoreboard, render_guided_checkin
+from .checkins import get_checkin, score_checkin
 from .cre import CREDebt, CREDeal, kill_flags
 from .runtime import run_chief
-from .state import DailyCheckIn, OperatingState, load_state, save_state, upsert_daily_checkin, write_report
+from .state import OperatingState, load_state, save_state, write_report
 
 st.set_page_config(page_title="Wealth OS", page_icon="📈", layout="wide")
 st.title("Wealth OS")
-st.caption("Chief of Staff + wealth, deals, calendar, habits, relationships, and CEO reviews")
+st.caption("A personal CEO operating system: decide, execute, track, review, improve.")
 
 state = load_state()
 
 with st.sidebar:
-    st.header("Operating rhythm")
-    page = st.radio("View", ["Today", "Scoreboard", "Calendar", "CRE Underwriting", "Deals", "Relationships", "State Editor"])
+    st.header("CEO operating rhythm")
+    page = st.radio(
+        "View",
+        ["Today", "CEO Scoreboard", "Weekly Review", "Calendar", "CRE Underwriting", "Deals", "Relationships", "State Editor"],
+    )
     st.caption(f"Google Calendar: {'connected' if calendar_is_connected() else 'not connected'}")
-    if st.button("Run morning brief", use_container_width=True):
-        with st.spinner("Chief of Staff is reviewing your operating state and calendar..."):
-            brief = asyncio.run(run_chief(
-                "Give me my morning brief. Compare my stated priorities with my recent and upcoming calendar. "
-                "Identify what matters most today, exactly three actions, one thing to kill or avoid, and any financial/deal/habit risk I should not ignore.",
-                session_id="morning-brief",
-            ))
-        path = write_report("morning-brief", brief)
-        st.session_state["latest_brief"] = brief
-        st.success(f"Saved locally to {path.name}")
 
 if page == "Today":
-    left, right = st.columns([1, 1])
-    with left:
-        st.subheader("Daily check-in")
-        with st.form("daily-checkin"):
-            sleep = st.number_input("Sleep hours", min_value=0.0, max_value=14.0, value=7.5, step=0.25)
-            exercise = st.checkbox("Exercise / training completed")
-            deep = st.number_input("Deep work hours", min_value=0.0, max_value=12.0, value=2.0, step=0.25)
-            energy = st.slider("Energy", 1, 10, 7)
-            top_outcome = st.text_input("Most important outcome today")
-            win = st.text_input("Biggest recent win")
-            friction = st.text_input("Biggest friction / constraint")
-            if st.form_submit_button("Save check-in", use_container_width=True):
-                upsert_daily_checkin(DailyCheckIn(
-                    date=date.today().isoformat(), sleep_hours=sleep, exercise=exercise,
-                    deep_work_hours=deep, energy=energy, top_outcome=top_outcome,
-                    win=win, friction=friction,
-                ))
-                st.success("Check-in saved")
-    with right:
+    today = get_checkin()
+    if today:
+        metrics = score_checkin(today)
+        c1, c2, c3 = st.columns(3)
+        c1.metric("CEO behavior score", f"{metrics.overall_score:.0f}/100")
+        c2.metric("Execution", f"{metrics.execution_rate:.0f}%")
+        c3.metric("Locked commitments", len(today.commitments))
+
+    tab1, tab2 = st.tabs(["Morning CEO Check-in", "Chief of Staff"])
+    with tab1:
+        render_guided_checkin()
+    with tab2:
         st.subheader("Chief of Staff")
-        prompt = st.text_area("Ask about priorities, a deal, capital allocation, habits, or a decision", height=140)
-        if st.button("Ask Chief of Staff", use_container_width=True) and prompt.strip():
-            with st.spinner("Thinking across the specialist agents..."):
+        st.caption("Use this after your check-in. The agent sees your recent CEO check-ins and structured operating state.")
+        prompt = st.text_area(
+            "What decision, obstacle, or opportunity do you want help with?",
+            height=150,
+            placeholder="Example: I keep avoiding the lender call because I may get bad news on leverage. What should I do?",
+        )
+        if st.button("Ask Chief of Staff", type="primary", use_container_width=True) and prompt.strip():
+            with st.spinner("Reviewing your operating history and decision rules..."):
                 answer = asyncio.run(run_chief(prompt, session_id="dashboard-chief"))
             st.markdown(answer)
-        if "latest_brief" in st.session_state:
-            st.divider()
-            st.subheader("Latest morning brief")
-            st.markdown(st.session_state["latest_brief"])
 
-elif page == "Scoreboard":
-    st.subheader("Personal scoreboard")
-    ws = state.wealth_snapshot
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Net worth", ws.get("net_worth", "Not set"))
-    c2.metric("Investable liquidity", ws.get("investable_liquidity", "Not set"))
-    c3.metric("Recurring / ownership income", ws.get("recurring_income", "Not set"))
-    c4.metric("Debt", ws.get("debt", "Not set"))
+        if st.button("Generate today's operating plan", use_container_width=True):
+            with st.spinner("Building today's plan..."):
+                brief = asyncio.run(run_chief(
+                    "Using today's CEO check-in, my recent patterns, my calendar, and Wealth Constitution, give me exactly three priority actions in order, one uncomfortable action to do before noon, one thing to kill/delegate/avoid, and one sentence explaining why this day matters. Do not give generic motivation.",
+                    session_id="morning-brief",
+                ))
+            path = write_report("morning-operating-plan", brief)
+            st.markdown(brief)
+            st.caption(f"Saved locally to {path.name}")
 
-    st.subheader("Current priorities")
-    if state.priorities:
-        for i, item in enumerate(state.priorities, 1):
-            st.write(f"{i}. {item}")
-    else:
-        st.info("No priorities set yet. Add them in State Editor.")
+elif page == "CEO Scoreboard":
+    render_ceo_scoreboard()
+    st.divider()
+    st.subheader("What the score means")
+    st.write(
+        "The score weights execution most heavily, then opportunity creation, ownership-building, decision velocity, leverage/delegation, relationships, and energy. It is a behavioral leading indicator—not a measure of your worth or a guarantee of financial outcomes."
+    )
 
-    if state.daily_checkins:
-        rows = [c.model_dump() for c in state.daily_checkins[-30:]]
-        st.subheader("Recent daily check-ins")
-        st.dataframe(rows, use_container_width=True, hide_index=True)
+elif page == "Weekly Review":
+    st.subheader("Weekly CEO Review")
+    st.caption("Run this once per week. The Chief of Staff uses your tracked check-ins to identify patterns rather than relying on memory.")
+    if st.button("Run weekly CEO review", type="primary", use_container_width=True):
+        with st.spinner("Reviewing the week..."):
+            review = asyncio.run(run_chief(
+                "Run my weekly CEO review from the tracked CEO check-ins and operating state. Tell me: 1) where I behaved like an owner, 2) where scarcity/avoidance showed up, 3) what I repeatedly deferred, 4) what created the most opportunity or ownership value, 5) what to stop doing, and 6) exactly three priorities for next week. Be specific and cite patterns from the supplied history.",
+                session_id="weekly-ceo-review",
+            ))
+        path = write_report("weekly-ceo-review", review)
+        st.markdown(review)
+        st.caption(f"Saved locally to {path.name}")
 
 elif page == "Calendar":
     st.subheader("Calendar intelligence")
     if not calendar_is_connected():
-        st.warning("Google Calendar is not connected. From your terminal, run `wealth-os calendar-auth` after placing your Google OAuth desktop-client JSON in `secrets/google_calendar_client_secret.json`.")
+        st.warning("Google Calendar is not connected yet. Wealth OS still works without it.")
     else:
         days_back = st.slider("Days back", 1, 30, 7)
         days_forward = st.slider("Days forward", 1, 14, 2)
         try:
             events = list_events(days_back=days_back, days_forward=days_forward)
             st.dataframe([e.to_dict() for e in events], use_container_width=True, hide_index=True)
-            if st.button("Audit time allocation", use_container_width=True):
+            if st.button("Audit my time against my goals", type="primary", use_container_width=True):
                 digest = calendar_digest(days_back=days_back, days_forward=days_forward)
                 result = asyncio.run(run_chief(
-                    digest + "\n\nAudit this calendar against my stated priorities. Categorize time into high-leverage creation/ownership work, deal sourcing/sales, relationships, operations/admin, and low-value/reactive work. Give me exactly three changes for next week.",
+                    digest + "\n\nAudit this calendar against my stated priorities and recent CEO check-ins. Categorize time into opportunity creation, ownership-building, relationships, operations/admin, and reactive/low-value work. Give me exactly three calendar changes for next week.",
                     session_id="calendar-audit-dashboard",
                     include_calendar=False,
                 ))
@@ -133,10 +131,8 @@ elif page == "CRE Underwriting":
             closing_costs=closing_costs, capex=capex, debt=debt, exit_cap_rate=exit_cap,
             hold_years=int(hold), annual_noi_growth=growth,
         )
-        metrics = deal.metrics()
-        flags = kill_flags(metrics)
-        st.session_state["cre_metrics"] = metrics
-        st.session_state["cre_flags"] = flags
+        st.session_state["cre_metrics"] = deal.metrics()
+        st.session_state["cre_flags"] = kill_flags(st.session_state["cre_metrics"])
 
     if "cre_metrics" in st.session_state:
         metrics = st.session_state["cre_metrics"]
@@ -145,7 +141,7 @@ elif page == "CRE Underwriting":
         c1.metric("Going-in cap", f"{metrics['going_in_cap_rate']:.2%}")
         c2.metric("Yield on cost", f"{metrics['stabilized_yield_on_cost']:.2%}")
         c3.metric("Current DSCR", "N/A" if metrics['current_dscr'] is None else f"{metrics['current_dscr']:.2f}x")
-        c4.metric("Current cash-on-cash", "N/A" if metrics['current_cash_on_cash'] is None else f"{metrics['current_cash_on_cash']:.2%}")
+        c4.metric("Cash-on-cash", "N/A" if metrics['current_cash_on_cash'] is None else f"{metrics['current_cash_on_cash']:.2%}")
         st.write("**Stress test**", metrics["stress"])
         if flags:
             for flag in flags:
@@ -154,7 +150,7 @@ elif page == "CRE Underwriting":
             st.success("No automatic kill flags were triggered. This does not replace diligence.")
         if st.button("Ask Deal Agent to interpret", use_container_width=True):
             result = asyncio.run(run_chief(
-                "Use the Deal Agent to interpret this CRE underwriting. Identify missing diligence, challenge assumptions, and conclude pursue, investigate, renegotiate, park, or kill.\n\n" + json.dumps({"metrics": metrics, "kill_flags": flags}, default=str, indent=2),
+                "Use the Deal Agent to interpret this underwriting. Identify missing diligence, challenge assumptions, and conclude pursue, investigate, renegotiate, park, or kill.\n\n" + json.dumps({"metrics": metrics, "kill_flags": flags}, default=str, indent=2),
                 session_id="cre-dashboard",
                 include_calendar=False,
             ))
@@ -165,11 +161,11 @@ elif page == "Deals":
     if state.deals:
         st.dataframe(state.deals, use_container_width=True, hide_index=True)
     else:
-        st.info("No deals in the pipeline yet.")
-    deal_text = st.text_area("Describe a deal to qualify", height=180)
-    if st.button("Run Deal Agent", use_container_width=True) and deal_text.strip():
+        st.info("No deals entered yet.")
+    deal_text = st.text_area("Describe a deal or opportunity that needs a decision", height=180)
+    if st.button("Qualify this opportunity", type="primary", use_container_width=True) and deal_text.strip():
         result = asyncio.run(run_chief(
-            "Use the Deal Agent to evaluate this opportunity. Apply the scorecard and kill questions, identify missing inputs, and conclude pursue, investigate, renegotiate, park, or kill.\n\n" + deal_text,
+            "Use the Deal Agent. Seek bad news first, apply kill criteria, identify missing inputs, and conclude pursue, investigate, renegotiate, park, or kill.\n\n" + deal_text,
             session_id="deal-desk",
         ))
         st.markdown(result)
@@ -180,16 +176,16 @@ elif page == "Relationships":
         st.dataframe(state.relationships, use_container_width=True, hide_index=True)
     else:
         st.info("No relationships entered yet.")
-    if st.button("Recommend relationship actions", use_container_width=True):
+    if st.button("Choose this week's relationship deposits", type="primary", use_container_width=True):
         result = asyncio.run(run_chief(
-            "Review my relationship portfolio. Recommend the three highest-value relationship deposits or follow-ups for this week. Prioritize long-term trust and usefulness over asks.",
+            "Review my relationships and recent CEO check-ins. Recommend exactly three high-value relationship deposits for this week. Prefer helping, thanking, introducing, or reconnecting over asking for something.",
             session_id="relationships",
         ))
         st.markdown(result)
 
 elif page == "State Editor":
     st.subheader("Structured operating state")
-    st.caption("This file stays local and is gitignored. Use JSON so the agents can reason over explicit, measurable facts.")
+    st.caption("Your private operating facts live locally and are gitignored.")
     raw = st.text_area("State JSON", value=state.model_dump_json(indent=2), height=600)
     if st.button("Validate and save state", type="primary", use_container_width=True):
         try:
