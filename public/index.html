@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Wealth OS</title>
+  <style>
+    :root { color-scheme: dark; --bg:#0b0f14; --panel:#121923; --muted:#8fa1b5; --line:#253142; --accent:#7cc4ff; --good:#7bd88f; --bad:#ff8b8b; }
+    *{box-sizing:border-box} body{margin:0;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:#eef4fb}
+    .shell{max-width:1180px;margin:0 auto;padding:28px}.top{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:24px}.brand h1{margin:0;font-size:30px}.brand p{margin:5px 0 0;color:var(--muted)}
+    .grid{display:grid;grid-template-columns:220px 1fr;gap:20px}.nav,.card{background:var(--panel);border:1px solid var(--line);border-radius:16px}.nav{padding:10px;height:max-content;position:sticky;top:20px}.nav button{width:100%;text-align:left;background:transparent;border:0;color:#dfe8f2;padding:11px 12px;border-radius:10px;cursor:pointer;font-size:14px}.nav button.active,.nav button:hover{background:#1b2634}.content{min-width:0}.card{padding:20px;margin-bottom:16px}h2{margin-top:0}.muted{color:var(--muted)}
+    input,textarea,select{width:100%;background:#0d131c;color:#eef4fb;border:1px solid #334156;border-radius:9px;padding:10px 11px;margin-top:6px}textarea{min-height:130px;resize:vertical}.row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.row2{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}.field{margin-bottom:12px}.btn{border:0;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer;background:var(--accent);color:#06111d}.btn.secondary{background:#26364a;color:#eaf2fb}.btn.danger{background:#57252a;color:#ffd8d8}.hidden{display:none!important}.status{padding:10px 12px;border-radius:10px;background:#182232;margin:10px 0}.good{color:var(--good)}.bad{color:var(--bad)}
+    .messages{display:flex;flex-direction:column;gap:10px;max-height:460px;overflow:auto;margin-bottom:12px}.msg{padding:12px 14px;border-radius:12px;white-space:pre-wrap;line-height:1.45}.msg.user{background:#17304a;margin-left:10%}.msg.assistant{background:#18202b;margin-right:10%}.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.metric{background:#0d131c;border:1px solid var(--line);border-radius:12px;padding:14px}.metric .k{color:var(--muted);font-size:12px}.metric .v{font-size:21px;font-weight:700;margin-top:3px}.kill{background:#3a1d22;border:1px solid #6b3038;padding:10px;border-radius:10px;margin:8px 0}
+    pre{white-space:pre-wrap;word-break:break-word;background:#0d131c;padding:12px;border-radius:10px;border:1px solid var(--line)}
+    @media(max-width:800px){.grid{grid-template-columns:1fr}.nav{position:static;display:flex;overflow:auto}.nav button{min-width:max-content}.row,.row2,.metrics{grid-template-columns:1fr 1fr}}
+    @media(max-width:520px){.shell{padding:14px}.row,.row2,.metrics{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+<div class="shell">
+  <div class="top"><div class="brand"><h1>Wealth OS</h1><p>Cloud Chief of Staff for wealth, deals, execution, and decision quality.</p></div><button id="logout" class="btn secondary hidden">Log out</button></div>
+
+  <section id="loginCard" class="card" style="max-width:460px;margin:70px auto">
+    <h2>Private access</h2><p class="muted">Enter the Wealth OS password configured in Vercel.</p>
+    <div class="field"><label>Password<input id="password" type="password" autocomplete="current-password" /></label></div>
+    <button id="login" class="btn">Unlock Wealth OS</button><div id="loginStatus" class="status hidden"></div>
+  </section>
+
+  <div id="app" class="grid hidden">
+    <nav class="nav">
+      <button data-page="today" class="active">Today</button>
+      <button data-page="scoreboard">Scoreboard</button>
+      <button data-page="underwrite">CRE Underwriting</button>
+      <button data-page="state">State</button>
+    </nav>
+    <main class="content">
+      <section id="page-today">
+        <div class="card"><h2>Chief of Staff</h2><div id="messages" class="messages"></div><textarea id="prompt" placeholder="What should I focus on today? Evaluate a decision, challenge a deal, or run a CEO review..."></textarea><div style="display:flex;gap:10px;margin-top:10px"><button id="ask" class="btn">Ask Chief of Staff</button><button id="morning" class="btn secondary">Morning brief</button></div><div id="askStatus" class="status hidden"></div></div>
+        <div class="card"><h2>Daily check-in</h2><div class="row"><label>Sleep hours<input id="sleep" type="number" step="0.25" value="7.5"></label><label>Deep work hours<input id="deep" type="number" step="0.25" value="2"></label><label>Energy 1–10<input id="energy" type="number" min="1" max="10" value="7"></label></div><div class="field"><label>Top outcome<input id="topOutcome" /></label></div><div class="field"><label>Biggest friction<input id="friction" /></label></div><button id="saveCheckin" class="btn secondary">Save check-in locally</button></div>
+      </section>
+
+      <section id="page-scoreboard" class="hidden">
+        <div class="card"><h2>Personal scoreboard</h2><p class="muted">These values stay in this browser unless you include them in an AI request.</p><div class="row2"><label>Net worth<input id="netWorth" placeholder="$0"></label><label>Investable liquidity<input id="liquidity" placeholder="$0"></label><label>Recurring / ownership income<input id="recurringIncome" placeholder="$0"></label><label>Debt<input id="debtTotal" placeholder="$0"></label></div><div class="field"><label>Current priorities, one per line<textarea id="priorities"></textarea></label></div><button id="saveScoreboard" class="btn">Save scoreboard locally</button></div>
+      </section>
+
+      <section id="page-underwrite" class="hidden">
+        <div class="card"><h2>Commercial real estate underwriting</h2>
+          <div class="row"><label>Deal name<input id="dealName" value="New acquisition"></label><label>Purchase price<input id="purchasePrice" type="number" value="2500000"></label><label>Current NOI<input id="currentNoi" type="number" value="175000"></label></div>
+          <div class="row"><label>Stabilized NOI<input id="stabilizedNoi" type="number" value="225000"></label><label>Closing costs<input id="closingCosts" type="number" value="50000"></label><label>CapEx<input id="capex" type="number" value="200000"></label></div>
+          <div class="row"><label>Loan amount<input id="loanAmount" type="number" value="1500000"></label><label>Interest rate decimal<input id="interestRate" type="number" step="0.0025" value="0.065"></label><label>Amortization years<input id="amortYears" type="number" value="25"></label></div>
+          <div class="row"><label>Exit cap rate<input id="exitCap" type="number" step="0.0025" value="0.07"></label><label>Hold years<input id="holdYears" type="number" value="5"></label><label>Annual NOI growth<input id="noiGrowth" type="number" step="0.005" value="0.02"></label></div>
+          <button id="underwrite" class="btn">Underwrite</button><div id="underwriteStatus" class="status hidden"></div>
+        </div>
+        <div id="resultsCard" class="card hidden"><h2>Results</h2><div id="metrics" class="metrics"></div><div id="killFlags"></div><h3>Stress case</h3><pre id="stress"></pre><button id="interpretDeal" class="btn secondary">Ask Deal Agent to interpret</button></div>
+      </section>
+
+      <section id="page-state" class="hidden">
+        <div class="card"><h2>Structured state</h2><p class="muted">Browser-local JSON. Export it periodically if you want a backup.</p><textarea id="stateJson" style="min-height:460px;font-family:ui-monospace,monospace"></textarea><div style="display:flex;gap:10px;margin-top:10px"><button id="saveState" class="btn">Validate & save</button><button id="exportState" class="btn secondary">Download backup</button><button id="resetState" class="btn danger">Reset local state</button></div><div id="stateStatus" class="status hidden"></div></div>
+      </section>
+    </main>
+  </div>
+</div>
+<script>
+const DEFAULT_STATE={goals:[],priorities:[],wealth_snapshot:{},habits:{},relationships:[],deals:[],daily_checkins:[],notes:[]};
+let state=loadState(), history=JSON.parse(localStorage.getItem('wealth_os_history')||'[]'), lastUnderwrite=null;
+function $(id){return document.getElementById(id)}
+function loadState(){try{return {...DEFAULT_STATE,...JSON.parse(localStorage.getItem('wealth_os_state')||'{}')}}catch{return structuredClone(DEFAULT_STATE)}}
+function persist(){localStorage.setItem('wealth_os_state',JSON.stringify(state));$('stateJson').value=JSON.stringify(state,null,2);hydrate()}
+function setStatus(id,text,bad=false){const el=$(id);el.textContent=text;el.classList.remove('hidden');el.classList.toggle('bad',bad);el.classList.toggle('good',!bad)}
+async function api(path,options={}){const r=await fetch(path,{credentials:'same-origin',headers:{'Content-Type':'application/json',...(options.headers||{})},...options});let data={};try{data=await r.json()}catch{}if(!r.ok)throw new Error(data.detail||`Request failed (${r.status})`);return data}
+async function checkSession(){const x=await api('/api/session');$('loginCard').classList.toggle('hidden',x.authenticated);$('app').classList.toggle('hidden',!x.authenticated);$('logout').classList.toggle('hidden',!x.authenticated);if(x.authenticated)hydrate()}
+function hydrate(){const w=state.wealth_snapshot||{};$('netWorth').value=w.net_worth||'';$('liquidity').value=w.investable_liquidity||'';$('recurringIncome').value=w.recurring_income||'';$('debtTotal').value=w.debt||'';$('priorities').value=(state.priorities||[]).join('\n');$('stateJson').value=JSON.stringify(state,null,2);renderHistory()}
+function renderHistory(){const box=$('messages');box.innerHTML='';history.slice(-20).forEach(m=>{const d=document.createElement('div');d.className=`msg ${m.role}`;d.textContent=m.content;box.appendChild(d)});box.scrollTop=box.scrollHeight}
+function saveHistory(){history=history.slice(-30);localStorage.setItem('wealth_os_history',JSON.stringify(history));renderHistory()}
+async function ask(prompt){setStatus('askStatus','Chief of Staff is thinking...');history.push({role:'user',content:prompt});saveHistory();try{const out=await api('/api/ask',{method:'POST',body:JSON.stringify({prompt,state,history:history.slice(0,-1)})});history.push({role:'assistant',content:out.answer});saveHistory();$('askStatus').classList.add('hidden')}catch(e){setStatus('askStatus',e.message,true)}}
+$('login').onclick=async()=>{try{await api('/api/login',{method:'POST',body:JSON.stringify({password:$('password').value})});$('password').value='';await checkSession()}catch(e){setStatus('loginStatus',e.message,true)}};
+$('password').addEventListener('keydown',e=>{if(e.key==='Enter')$('login').click()});
+$('logout').onclick=async()=>{await api('/api/logout',{method:'POST'});location.reload()};
+$('ask').onclick=()=>{const p=$('prompt').value.trim();if(p){$('prompt').value='';ask(p)}};
+$('morning').onclick=()=>ask('Give me my morning brief. Identify what matters most today, exactly three priority actions, one thing to kill or avoid, and the most important risk or missing decision across wealth, deals, time, habits, and relationships. Be concise and concrete.');
+$('saveCheckin').onclick=()=>{state.daily_checkins=state.daily_checkins||[];state.daily_checkins.push({date:new Date().toISOString().slice(0,10),sleep_hours:+$('sleep').value,deep_work_hours:+$('deep').value,energy:+$('energy').value,top_outcome:$('topOutcome').value,friction:$('friction').value});state.daily_checkins=state.daily_checkins.slice(-90);persist();alert('Saved locally')};
+$('saveScoreboard').onclick=()=>{state.wealth_snapshot={net_worth:$('netWorth').value,investable_liquidity:$('liquidity').value,recurring_income:$('recurringIncome').value,debt:$('debtTotal').value};state.priorities=$('priorities').value.split('\n').map(x=>x.trim()).filter(Boolean);persist();alert('Saved locally')};
+$('underwrite').onclick=async()=>{const payload={name:$('dealName').value,purchase_price:+$('purchasePrice').value,current_noi:+$('currentNoi').value,stabilized_noi:+$('stabilizedNoi').value,closing_costs:+$('closingCosts').value,capex:+$('capex').value,debt:{loan_amount:+$('loanAmount').value,interest_rate:+$('interestRate').value,amortization_years:+$('amortYears').value},exit_cap_rate:+$('exitCap').value,hold_years:+$('holdYears').value,annual_noi_growth:+$('noiGrowth').value};setStatus('underwriteStatus','Calculating...');try{lastUnderwrite=await api('/api/underwrite',{method:'POST',body:JSON.stringify(payload)});$('underwriteStatus').classList.add('hidden');$('resultsCard').classList.remove('hidden');const m=lastUnderwrite.metrics;const vals=[['Going-in cap',(m.going_in_cap_rate*100).toFixed(2)+'%'],['Yield on cost',(m.stabilized_yield_on_cost*100).toFixed(2)+'%'],['Current DSCR',m.current_dscr==null?'N/A':m.current_dscr.toFixed(2)+'x'],['Cash-on-cash',m.current_cash_on_cash==null?'N/A':(m.current_cash_on_cash*100).toFixed(2)+'%']];$('metrics').innerHTML=vals.map(v=>`<div class="metric"><div class="k">${v[0]}</div><div class="v">${v[1]}</div></div>`).join('');$('killFlags').innerHTML=lastUnderwrite.kill_flags.length?lastUnderwrite.kill_flags.map(x=>`<div class="kill">${x}</div>`).join(''):'<p class="good">No automatic kill flags triggered. This does not replace diligence.</p>';$('stress').textContent=JSON.stringify(m.stress,null,2)}catch(e){setStatus('underwriteStatus',e.message,true)}};
+$('interpretDeal').onclick=()=>{if(lastUnderwrite){document.querySelector('[data-page="today"]').click();ask('Use the Deal Agent to interpret this deterministic CRE underwriting. Identify missing diligence, challenge assumptions, and conclude pursue, investigate, renegotiate, park, or kill.\n\n'+JSON.stringify(lastUnderwrite,null,2))}};
+$('saveState').onclick=()=>{try{state=JSON.parse($('stateJson').value);persist();setStatus('stateStatus','State saved in this browser')}catch(e){setStatus('stateStatus','Invalid JSON: '+e.message,true)}};
+$('exportState').onclick=()=>{const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='wealth-os-state.json';a.click();URL.revokeObjectURL(a.href)};
+$('resetState').onclick=()=>{if(confirm('Reset browser-local Wealth OS state and conversation history?')){state=structuredClone(DEFAULT_STATE);history=[];persist();saveHistory()}};
+document.querySelectorAll('.nav button').forEach(b=>b.onclick=()=>{document.querySelectorAll('.nav button').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.querySelectorAll('main>section').forEach(s=>s.classList.add('hidden'));$('page-'+b.dataset.page).classList.remove('hidden')});
+checkSession().catch(e=>setStatus('loginStatus',e.message,true));
+</script>
+</body></html>
