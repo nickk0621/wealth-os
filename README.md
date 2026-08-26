@@ -1,6 +1,6 @@
 # Wealth OS
 
-An agent-driven personal operating system for building wealth, protecting attention, evaluating opportunities, and running disciplined daily/weekly/monthly reviews.
+An agent-driven personal operating system for building wealth, protecting attention, evaluating commercial real estate, and running disciplined daily/weekly/monthly reviews.
 
 ## What it does now
 
@@ -30,6 +30,13 @@ pip install -e .
 export OPENAI_API_KEY="your-key"
 ```
 
+On Windows PowerShell, activation is typically:
+
+```powershell
+.venv\Scripts\Activate.ps1
+$env:OPENAI_API_KEY="your-key"
+```
+
 ## Dashboard
 
 Launch the local operating dashboard:
@@ -38,16 +45,59 @@ Launch the local operating dashboard:
 wealth-os dashboard
 ```
 
-The dashboard includes:
+The dashboard includes daily check-ins, the personal wealth scoreboard, Chief-of-Staff chat, calendar intelligence, structured CRE underwriting/stress testing, deal analysis, relationship review, and a structured state editor.
 
-- daily sleep / exercise / deep-work / energy check-ins
-- personal wealth scoreboard
-- current priorities
-- deal pipeline and Deal Agent analysis
-- relationship portfolio and relationship actions
-- structured state editor
-- Chief of Staff chat
-- one-click morning brief generation
+## Google Calendar — read only
+
+Calendar access is deliberately read-only.
+
+1. Enable Google Calendar API in a Google Cloud project.
+2. Configure Google Auth and create an OAuth 2.0 **Desktop app** client.
+3. Download the credentials JSON to:
+
+   `secrets/google_calendar_client_secret.json`
+
+4. Run:
+
+```bash
+wealth-os calendar-auth
+wealth-os calendar-status
+wealth-os calendar-audit
+```
+
+The browser authorization flow stores the resulting local token at `secrets/google_calendar_token.json`. Both credential files are gitignored.
+
+Once connected, morning briefs and CEO reviews can compare your stated priorities with your actual calendar allocation.
+
+## Commercial real-estate underwriting
+
+The CRE module calculates deterministic metrics before the Deal Agent interprets them, including:
+
+- total basis and equity required
+- going-in cap rate
+- stabilized yield on cost
+- annual debt service
+- current and stabilized DSCR
+- cash flow after debt and cash-on-cash return
+- projected exit NOI/value
+- stress-case NOI decline, interest-rate shock, and exit-cap expansion
+- automatic coverage/spread kill flags
+
+CLI example:
+
+```bash
+wealth-os cre-underwrite \
+  --name "Main Street" \
+  --purchase-price 2500000 \
+  --current-noi 175000 \
+  --stabilized-noi 225000 \
+  --loan-amount 1500000 \
+  --interest-rate 0.065 \
+  --capex 200000 \
+  --exit-cap-rate 0.07
+```
+
+Or use the **CRE Underwriting** page in the dashboard.
 
 ## Daily commands
 
@@ -68,27 +118,27 @@ wealth-os review annual
 
 Reviews and morning briefs are saved locally under `data/reports/`.
 
-## Deal qualification
+## Local but internet-connected
 
-```bash
-wealth-os ask "Evaluate this acquisition: $2.4M purchase, $1.5M debt, current NOI $170k, upside from lease-up..."
-```
+The application runs on your computer, but the Python process can make outbound HTTPS calls to OpenAI and Google. The dashboard itself normally stays on `localhost`, so it does not need to be publicly exposed.
+
+See `docs/LOCAL_INTERNET.md` for a diagram and a fuller explanation.
 
 ## Data and safety model
 
-Private operating state, session memory, histories, and reports live under `data/` and are gitignored. Do not commit personal financial data or API keys.
+Private operating state, session memory, histories, reports, OAuth tokens, and client secrets are gitignored.
 
-Agents analyze and recommend, but V1 does **not** move money, execute trades, sign documents, borrow funds, or send external messages automatically. Tax, legal, accounting, and investment conclusions should be treated as analysis for discussion with qualified professionals, not final professional advice.
+Agents analyze and recommend, but Wealth OS does **not** move money, execute trades, sign documents, borrow funds, or send external messages automatically. Tax, legal, accounting, and investment conclusions should be treated as analysis for discussion with qualified professionals, not final professional advice.
 
 See `docs/OPERATING_RHYTHM.md` for the daily/weekly/monthly cadence and local scheduling example.
 
 ## Next build targets
 
-1. Calendar integration so the Chief of Staff can compare stated priorities with actual time allocation.
-2. Gmail integration with explicit human approval before sending anything.
-3. A typed commercial-real-estate deal database and underwriting model.
-4. Automated metrics and trend charts from state history.
-5. Human-in-the-loop approval gates for any future external write actions.
-6. Automated tests/evals for Wealth Constitution compliance and deal scoring.
+1. Gmail integration with explicit human approval before any external send.
+2. Persistent typed CRE deal database with scenario/version history.
+3. Automated metrics and trend charts from state history.
+4. Richer calendar categorization and time-budget targets.
+5. Human-in-the-loop approval gates for any future external write action.
+6. Evals for Wealth Constitution compliance and deal qualification.
 
 Built on the OpenAI Agents SDK manager / agents-as-tools pattern.
