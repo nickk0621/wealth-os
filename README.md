@@ -15,27 +15,59 @@ Wealth OS uses a manager-style multi-agent pattern with the OpenAI Agents SDK:
 
 The Chief of Staff has persistent conversational memory through an SDK `SQLiteSession`. Separate structured operating state lives locally in `data/state.json`, with local history snapshots and saved markdown reports.
 
+## One-command local setup
+
+Requires Python 3.10+ and Git.
+
+### macOS / Linux
+
+```bash
+git clone https://github.com/nickk0621/wealth-os.git
+cd wealth-os
+bash scripts/setup.sh
+```
+
+The setup script creates `.venv`, installs Wealth OS, creates a local `.env`, securely prompts for your OpenAI API key if needed, runs `wealth-os doctor`, and offers to launch the dashboard.
+
+### Windows PowerShell
+
+```powershell
+git clone https://github.com/nickk0621/wealth-os.git
+cd wealth-os
+powershell -ExecutionPolicy Bypass -File .\scripts\setup.ps1
+```
+
+After setup, the normal launch command is:
+
+```bash
+wealth-os dashboard
+```
+
+If you open a fresh terminal first activate the virtual environment:
+
+```bash
+source .venv/bin/activate
+```
+
+Windows PowerShell:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+```
+
+## Installation diagnostics
+
+Run:
+
+```bash
+wealth-os doctor
+```
+
+It checks Python, the OpenAI key, outbound HTTPS connectivity, your local operating state, and optional Google Calendar credentials/authorization.
+
 ## Wealth Constitution
 
 `config/wealth_constitution.yaml` contains durable rules the agents should apply: preserve optionality, never risk ruin, measure after-tax outcomes, seek bad news early, build ownership, protect liquidity and attention, protect reputation, reject sunk-cost thinking, and avoid lifestyle-driven scarcity.
-
-## Setup
-
-Requires Python 3.10+.
-
-```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -e .
-export OPENAI_API_KEY="your-key"
-```
-
-On Windows PowerShell, activation is typically:
-
-```powershell
-.venv\Scripts\Activate.ps1
-$env:OPENAI_API_KEY="your-key"
-```
 
 ## Dashboard
 
@@ -126,7 +158,7 @@ See `docs/LOCAL_INTERNET.md` for a diagram and a fuller explanation.
 
 ## Data and safety model
 
-Private operating state, session memory, histories, reports, OAuth tokens, and client secrets are gitignored.
+Private operating state, session memory, histories, reports, OAuth tokens, API keys, and client secrets are gitignored.
 
 Agents analyze and recommend, but Wealth OS does **not** move money, execute trades, sign documents, borrow funds, or send external messages automatically. Tax, legal, accounting, and investment conclusions should be treated as analysis for discussion with qualified professionals, not final professional advice.
 
