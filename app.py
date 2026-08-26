@@ -1,7 +1,10 @@
 """Streamlit entry point for Wealth OS.
 
-This wrapper imports the dashboard as a package module so its relative imports
-resolve correctly when Streamlit executes the top-level script.
+Streamlit reruns this file on every interaction. We therefore execute the
+wealth_os.dashboard module afresh on each rerun rather than importing it once,
+which would be cached by Python and leave subsequent reruns blank.
 """
 
-from wealth_os.dashboard import *  # noqa: F401,F403
+import runpy
+
+runpy.run_module("wealth_os.dashboard", run_name="__main__")
