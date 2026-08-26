@@ -14,12 +14,13 @@ from rich.markdown import Markdown
 from rich.table import Table
 
 from .calendar_google import authorize_calendar, calendar_digest, calendar_is_connected
+from .checkins import DailyCEOCheckIn, get_checkin, save_checkin, score_checkin
 from .cre import CREDebt, CREDeal, kill_flags
 from .runtime import run_chief
-from .state import DailyCheckIn, load_state, upsert_daily_checkin, write_report
+from .state import load_state, write_report
 
 load_dotenv()
-app = typer.Typer(help="Wealth OS — agent-driven personal operating system")
+app = typer.Typer(help="Wealth OS — agent-driven personal CEO operating system")
 console = Console()
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -54,8 +55,7 @@ def doctor():
     checks.append(("Google Calendar authorization", calendar_is_connected(), "connected" if calendar_is_connected() else "optional / not connected"))
 
     try:
-        state = load_state()
-        state_ok = state is not None
+        state_ok = load_state() is not None
         state_detail = "state loads"
     except Exception as exc:
         state_ok = False
@@ -78,6 +78,30 @@ def doctor():
         raise typer.Exit(code=1)
 
 
+@app.command("ceo-checkin")
+def ceo_checkin():
+    """Run the structured morning CEO check-in from the terminal."""
+    current = get_checkin() or DailyCEOCheckIn()
+    console.print("\n[bold]Daily CEO Check-in[/bold]\n")
+    commitments = []
+    for idx in range(1, 4):
+        value = console.input(f"Commitment {idx}: ").strip()
+        if value:
+            commitments.append(value)
+    current.commitments = commitments[:3]
+    current.opportunity_creation = console.input("Opportunity / pipeline creation today: ").strip()
+    current.deal_decision = console.input("Deal/project that needs a decision: ").strip()
+    current.ownership_building = console.input("Ownership/equity/asset-building action: ").strip()
+    current.capital_allocation = console.input("Capital-allocation decision: ").strip()
+    current.relationship_deposit = console.input("Relationship deposit: ").strip()
+    current.health_energy = console.input("Health/energy action: ").strip()
+    current.kill_delegate_avoid = console.input("Kill/delegate/avoid: ").strip()
+    current.avoidance_or_fear = console.input("What uncomfortable thing are you avoiding? ").strip()
+    save_checkin(current)
+    metrics = score_checkin(current)
+    console.print(f"\n[green]Saved.[/green] CEO behavior score: [bold]{metrics.overall_score:.0f}/100[/bold]")
+
+
 @app.command()
 def ask(prompt: str):
     """Ask the Chief of Staff a one-off question."""
@@ -98,15 +122,14 @@ def chat():
 
 @app.command()
 def morning():
-    """Generate and save the daily morning brief, including calendar context when connected."""
+    """Generate and save the daily operating plan from tracked CEO check-ins."""
     prompt = (
-        "Give me my morning brief. Compare my stated priorities with my recent and upcoming calendar. "
-        "Identify what matters most today, exactly three priority actions, one thing to kill/avoid, "
-        "and the most important risk or missing decision across wealth, deals, time, habits, and relationships. "
-        "If my calendar allocation conflicts with my goals, say so explicitly. Be concise and concrete."
+        "Using today's CEO check-in, recent patterns, operating state, and calendar when available, give me exactly three priority actions in order, "
+        "one uncomfortable action to do before noon, one thing to kill/delegate/avoid, and one sentence explaining why this day matters. "
+        "Challenge repeated deferrals and scarcity behavior. Do not give generic motivation."
     )
     output = render(prompt, "morning-brief")
-    path = write_report("morning-brief", output)
+    path = write_report("morning-operating-plan", output)
     console.print(Markdown(output))
     console.print(f"\n[dim]Saved: {path}[/dim]")
 
@@ -115,8 +138,8 @@ def morning():
 def review(period: Literal["weekly", "monthly", "quarterly", "annual"] = "weekly"):
     """Run and save a structured CEO review."""
     prompt = (
-        f"Run my {period} CEO review. Use my current operating state and calendar allocation, challenge weak assumptions, "
-        "and finish with exactly three priority actions plus one stop-doing item."
+        f"Run my {period} CEO review using my tracked CEO check-ins, operating state, and calendar allocation. "
+        "Identify owner-like behavior, scarcity/avoidance, repeated deferrals, highest-value actions, what to stop, and exactly three priorities for the next period."
     )
     output = render(prompt, f"review-{period}")
     path = write_report(f"{period}-review", output)
@@ -144,13 +167,12 @@ def calendar_audit(days_back: int = 7, days_forward: int = 2):
     if not calendar_is_connected():
         console.print("[yellow]Calendar is not connected. Run `wealth-os calendar-auth` first.[/yellow]")
         raise typer.Exit(code=1)
-    prompt = (
-        f"Audit my calendar using the supplied calendar context ({days_back} days back and {days_forward} days forward). "
-        "Categorize the time into high-leverage creation/ownership work, sales/deal sourcing, relationships, operations/admin, "
-        "and low-value/reactive work. Compare the pattern with my goals. Give me three calendar changes for next week."
-    )
     custom = calendar_digest(days_back=days_back, days_forward=days_forward)
-    output = render(custom + "\n\n" + prompt, "calendar-audit", include_calendar=False)
+    output = render(
+        custom + "\n\nAudit this calendar against my priorities and tracked CEO check-ins. Give me exactly three calendar changes for next week.",
+        "calendar-audit",
+        include_calendar=False,
+    )
     console.print(Markdown(output))
 
 
@@ -170,13 +192,7 @@ def cre_underwrite(
     annual_noi_growth: float = typer.Option(0.02),
 ):
     """Run deterministic CRE underwriting metrics and stress tests, then ask the Deal Agent to interpret them."""
-    debt = None
-    if loan_amount > 0:
-        debt = CREDebt(
-            loan_amount=loan_amount,
-            interest_rate=interest_rate,
-            amortization_years=amortization_years,
-        )
+    debt = CREDebt(loan_amount=loan_amount, interest_rate=interest_rate, amortization_years=amortization_years) if loan_amount > 0 else None
     deal = CREDeal(
         name=name,
         purchase_price=purchase_price,
@@ -193,34 +209,10 @@ def cre_underwrite(
     flags = kill_flags(metrics)
     console.print_json(json.dumps({"metrics": metrics, "kill_flags": flags}, default=str))
     prompt = (
-        "Use the Deal Agent to interpret this deterministic CRE underwriting output. Do not recalculate unless necessary. "
-        "Identify missing diligence, challenge assumptions, and conclude pursue, investigate, renegotiate, park, or kill.\n\n"
+        "Use the Deal Agent to interpret this deterministic CRE underwriting output. Identify missing diligence, challenge assumptions, and conclude pursue, investigate, renegotiate, park, or kill.\n\n"
         + json.dumps({"metrics": metrics, "kill_flags": flags}, default=str, indent=2)
     )
     console.print(Markdown(render(prompt, "cre-underwriting", include_calendar=False)))
-
-
-@app.command("check-in")
-def check_in(
-    sleep_hours: float = typer.Option(..., min=0, max=14),
-    deep_work_hours: float = typer.Option(..., min=0, max=12),
-    energy: int = typer.Option(..., min=1, max=10),
-    exercise: bool = typer.Option(False),
-    top_outcome: str = typer.Option(""),
-    win: str = typer.Option(""),
-    friction: str = typer.Option(""),
-):
-    """Record today's operating check-in."""
-    upsert_daily_checkin(DailyCheckIn(
-        sleep_hours=sleep_hours,
-        deep_work_hours=deep_work_hours,
-        energy=energy,
-        exercise=exercise,
-        top_outcome=top_outcome,
-        win=win,
-        friction=friction,
-    ))
-    console.print("[green]Daily check-in saved.[/green]")
 
 
 @app.command()
@@ -230,10 +222,33 @@ def state():
 
 
 @app.command()
+def api(host: str = "127.0.0.1", port: int = 8765):
+    """Run the Wealth OS data API. Use 127.0.0.1 locally; deploy separately for secure remote sync."""
+    subprocess.run([
+        sys.executable,
+        "-m",
+        "uvicorn",
+        "wealth_os.api:app",
+        "--host",
+        host,
+        "--port",
+        str(port),
+    ], check=False)
+
+
+@app.command()
 def dashboard():
     """Launch the local Streamlit dashboard."""
     dashboard_file = ROOT / "app.py"
-    subprocess.run([sys.executable, "-m", "streamlit", "run", str(dashboard_file)], check=False)
+    subprocess.run([
+        sys.executable,
+        "-m",
+        "streamlit",
+        "run",
+        str(dashboard_file),
+        "--server.address",
+        "127.0.0.1",
+    ], check=False)
 
 
 if __name__ == "__main__":
