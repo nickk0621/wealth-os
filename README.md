@@ -1,8 +1,8 @@
 # Wealth OS
 
-An agent-driven personal operating system for building wealth, protecting attention, evaluating opportunities, and running disciplined weekly/monthly reviews.
+An agent-driven personal operating system for building wealth, protecting attention, evaluating opportunities, and running disciplined daily/weekly/monthly reviews.
 
-## V1 architecture
+## What it does now
 
 Wealth OS uses a manager-style multi-agent pattern with the OpenAI Agents SDK:
 
@@ -13,11 +13,11 @@ Wealth OS uses a manager-style multi-agent pattern with the OpenAI Agents SDK:
 - **Relationship Agent** — identifies relationships to deepen, maintain, or initiate.
 - **CEO Review Agent** — runs weekly, monthly, quarterly, and annual operating reviews.
 
-The specialist agents are exposed as tools to the Chief of Staff, which is the primary interface.
+The Chief of Staff has persistent conversational memory through an SDK `SQLiteSession`. Separate structured operating state lives locally in `data/state.json`, with local history snapshots and saved markdown reports.
 
 ## Wealth Constitution
 
-The file `config/wealth_constitution.yaml` contains the rules the agents should treat as durable constraints: preserve optionality, never risk ruin, measure after-tax outcomes, seek bad news early, build ownership, protect reputation, avoid lifestyle-driven scarcity, and favor compounding.
+`config/wealth_constitution.yaml` contains durable rules the agents should apply: preserve optionality, never risk ruin, measure after-tax outcomes, seek bad news early, build ownership, protect liquidity and attention, protect reputation, reject sunk-cost thinking, and avoid lifestyle-driven scarcity.
 
 ## Setup
 
@@ -27,17 +27,37 @@ Requires Python 3.10+.
 python -m venv .venv
 source .venv/bin/activate
 pip install -e .
-cp .env.example .env
 export OPENAI_API_KEY="your-key"
 ```
 
-Run the interactive Chief of Staff:
+## Dashboard
+
+Launch the local operating dashboard:
 
 ```bash
+wealth-os dashboard
+```
+
+The dashboard includes:
+
+- daily sleep / exercise / deep-work / energy check-ins
+- personal wealth scoreboard
+- current priorities
+- deal pipeline and Deal Agent analysis
+- relationship portfolio and relationship actions
+- structured state editor
+- Chief of Staff chat
+- one-click morning brief generation
+
+## Daily commands
+
+```bash
+wealth-os check-in --sleep-hours 7.5 --deep-work-hours 2 --energy 8 --exercise --top-outcome "Underwrite target acquisition"
+wealth-os morning
 wealth-os chat
 ```
 
-Run a structured review:
+## CEO reviews
 
 ```bash
 wealth-os review weekly
@@ -46,7 +66,9 @@ wealth-os review quarterly
 wealth-os review annual
 ```
 
-Evaluate an opportunity:
+Reviews and morning briefs are saved locally under `data/reports/`.
+
+## Deal qualification
 
 ```bash
 wealth-os ask "Evaluate this acquisition: $2.4M purchase, $1.5M debt, current NOI $170k, upside from lease-up..."
@@ -54,19 +76,19 @@ wealth-os ask "Evaluate this acquisition: $2.4M purchase, $1.5M debt, current NO
 
 ## Data and safety model
 
-V1 stores user-entered operating state locally in `data/state.json`. Do not commit personal financial data; `data/` is ignored except for its README. Agents advise and analyze, but V1 does **not** move money, execute trades, sign documents, borrow funds, or send messages automatically.
+Private operating state, session memory, histories, and reports live under `data/` and are gitignored. Do not commit personal financial data or API keys.
 
-Tax, legal, accounting, and investment conclusions should be treated as analysis for discussion with qualified professionals, not final professional advice.
+Agents analyze and recommend, but V1 does **not** move money, execute trades, sign documents, borrow funds, or send external messages automatically. Tax, legal, accounting, and investment conclusions should be treated as analysis for discussion with qualified professionals, not final professional advice.
 
-## Codex workflow
+See `docs/OPERATING_RHYTHM.md` for the daily/weekly/monthly cadence and local scheduling example.
 
-This repo is intentionally simple so Codex can evolve it safely. Good next tasks include:
+## Next build targets
 
-1. Add a web dashboard for the personal scoreboard.
-2. Add Google Calendar and Gmail integrations behind explicit approval gates.
-3. Add a real-estate underwriting schema and deal database.
-4. Add scheduled morning/weekly/monthly brief generation.
-5. Add human-in-the-loop approval for any external write action.
-6. Add tests and evals for the wealth constitution and opportunity-scoring behavior.
+1. Calendar integration so the Chief of Staff can compare stated priorities with actual time allocation.
+2. Gmail integration with explicit human approval before sending anything.
+3. A typed commercial-real-estate deal database and underwriting model.
+4. Automated metrics and trend charts from state history.
+5. Human-in-the-loop approval gates for any future external write actions.
+6. Automated tests/evals for Wealth Constitution compliance and deal scoring.
 
 Built on the OpenAI Agents SDK manager / agents-as-tools pattern.
