@@ -232,7 +232,7 @@ def state():
 @app.command()
 def dashboard():
     """Launch the local Streamlit dashboard."""
-    dashboard_file = Path(__file__).with_name("dashboard.py")
+    dashboard_file = ROOT / "app.py"
     subprocess.run([sys.executable, "-m", "streamlit", "run", str(dashboard_file)], check=False)
 
 
