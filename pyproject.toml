@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "wealth-os"
-version = "0.3.0"
-description = "Agent-driven personal operating system for wealth, deals, time, habits, relationships, and calendar intelligence"
+version = "0.4.0"
+description = "Agent-driven personal CEO operating system for wealth, deals, execution, habits, relationships, and calendar intelligence"
 requires-python = ">=3.10"
 dependencies = [
   "openai-agents>=0.2.0",
@@ -15,6 +15,8 @@ dependencies = [
   "typer>=0.12.0",
   "rich>=13.0.0",
   "streamlit>=1.37.0",
+  "fastapi>=0.115.0",
+  "uvicorn[standard]>=0.30.0",
   "google-api-python-client>=2.140.0",
   "google-auth>=2.35.0",
   "google-auth-oauthlib>=1.2.1"
