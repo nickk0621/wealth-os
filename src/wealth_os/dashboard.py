@@ -6,8 +6,8 @@ from datetime import date
 
 import streamlit as st
 
-from .runtime import run_chief
-from .state import DailyCheckIn, OperatingState, load_state, save_state, upsert_daily_checkin, write_report
+from wealth_os.runtime import run_chief
+from wealth_os.state import DailyCheckIn, OperatingState, load_state, save_state, upsert_daily_checkin, write_report
 
 st.set_page_config(page_title="Wealth OS", page_icon="📈", layout="wide")
 st.title("Wealth OS")
