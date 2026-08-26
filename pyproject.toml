@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "wealth-os"
-version = "0.4.0"
+version = "0.5.0"
 description = "Agent-driven personal CEO operating system for wealth, deals, execution, habits, relationships, and calendar intelligence"
 requires-python = ">=3.10"
 dependencies = [
@@ -27,3 +27,6 @@ wealth-os = "wealth_os.cli:app"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.vercel]
+entrypoint = "cloud.server:app"
